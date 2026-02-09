@@ -11,20 +11,29 @@ from ..utils.exceptions import SSHConnectionError
 class SSHConnectionManager:
     """Manages SSH connections to remote servers."""
 
-    def __init__(self, hostname: str, username: str, key_path: Path, port: int = 22):
+    def __init__(
+        self,
+        hostname: str,
+        username: str,
+        key_path: Optional[Path] = None,
+        port: int = 22,
+        password: Optional[str] = None,
+    ):
         """
         Initialize SSH connection manager.
 
         Args:
             hostname: Server hostname or IP address
             username: SSH username
-            key_path: Path to SSH private key
+            key_path: Path to SSH private key (for key-based auth)
             port: SSH port (default: 22)
+            password: SSH password (for password-based auth)
         """
         self.hostname = hostname
         self.username = username
-        self.key_path = Path(key_path).expanduser()
+        self.key_path = Path(key_path).expanduser() if key_path else None
         self.port = port
+        self.password = password
         self._client: Optional[paramiko.SSHClient] = None
 
     @contextmanager
@@ -33,7 +42,7 @@ class SSHConnectionManager:
         Context manager for SSH connections.
 
         Usage:
-            ssh = SSHConnectionManager(hostname, username, key_path)
+            ssh = SSHConnectionManager(hostname, username, key_path=key_path)
             with ssh.connect():
                 exit_code, stdout, stderr = ssh.execute_command("ls")
 
@@ -44,27 +53,38 @@ class SSHConnectionManager:
             self._client = paramiko.SSHClient()
             self._client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-            # Try to load the private key
-            try:
-                # Try RSA key first
-                key = paramiko.RSAKey.from_private_key_file(str(self.key_path))
-            except paramiko.SSHException:
+            if self.password:
+                # Password-based authentication
+                self._client.connect(
+                    hostname=self.hostname,
+                    port=self.port,
+                    username=self.username,
+                    password=self.password,
+                    timeout=10,
+                    banner_timeout=10,
+                )
+            elif self.key_path:
+                # Key-based authentication - try multiple key formats
                 try:
-                    # Try Ed25519 key
-                    key = paramiko.Ed25519Key.from_private_key_file(str(self.key_path))
+                    key = paramiko.RSAKey.from_private_key_file(str(self.key_path))
                 except paramiko.SSHException:
-                    # Try ECDSA key
-                    key = paramiko.ECDSAKey.from_private_key_file(str(self.key_path))
+                    try:
+                        key = paramiko.Ed25519Key.from_private_key_file(str(self.key_path))
+                    except paramiko.SSHException:
+                        key = paramiko.ECDSAKey.from_private_key_file(str(self.key_path))
 
-            # Connect to the server
-            self._client.connect(
-                hostname=self.hostname,
-                port=self.port,
-                username=self.username,
-                pkey=key,
-                timeout=10,
-                banner_timeout=10,
-            )
+                self._client.connect(
+                    hostname=self.hostname,
+                    port=self.port,
+                    username=self.username,
+                    pkey=key,
+                    timeout=10,
+                    banner_timeout=10,
+                )
+            else:
+                raise SSHConnectionError(
+                    "No authentication method provided. Supply either key_path or password."
+                )
 
             yield self
 
@@ -76,6 +96,8 @@ class SSHConnectionManager:
             raise SSHConnectionError(
                 f"Authentication failed for {self.username}@{self.hostname}"
             )
+        except SSHConnectionError:
+            raise
         except paramiko.SSHException as e:
             raise SSHConnectionError(
                 f"SSH error connecting to {self.hostname}: {e}"
@@ -137,7 +159,8 @@ class SSHConnectionManager:
 
     def __str__(self) -> str:
         """Format SSH manager as string for display."""
-        return f"SSH({self.username}@{self.hostname}:{self.port})"
+        auth = "password" if self.password else "key"
+        return f"SSH({self.username}@{self.hostname}:{self.port}, {auth})"
 
     def __repr__(self) -> str:
         """Detailed representation for debugging."""

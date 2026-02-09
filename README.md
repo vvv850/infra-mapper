@@ -26,7 +26,7 @@ Follow the interactive prompts to configure your servers and generate your infra
 
 ## ✨ Features
 
-- 🔌 **SSH Connection**: Securely connect to multiple servers using SSH keys
+- 🔌 **SSH Connection**: Securely connect to multiple servers using SSH keys or password authentication
 - 🔍 **Docker Discovery**: Automatically discover all running Docker containers
 - 📦 **Stack Detection**: Identify Docker Compose stacks vs standalone containers
 - 🗺️ **Port Mapping**: Extract and display all exposed ports
@@ -84,7 +84,7 @@ sudo apt install python3.12 python3.12-venv python3-pip
 ### Server Requirements
 
 - ✅ SSH access to target Linux servers (Ubuntu, Debian, CentOS, etc.)
-- ✅ SSH private key authentication configured
+- ✅ SSH key or password authentication configured
 - ✅ Docker installed on target servers
 - ✅ User account with `sudo` privileges for Docker commands
 
@@ -138,6 +138,24 @@ pip install -e .
 
 ## 📖 Usage
 
+### CLI Options
+
+```bash
+infra-mapper                              # Use default config (~/.infra-mapper/servers.yaml)
+infra-mapper --config /path/to/servers.yaml  # Use custom config file
+```
+
+### Standalone Executable (no Python required)
+
+Download the pre-built binary for your platform from the [Releases](https://forgejo.hassio.ro/vlad/infra-mapper/releases) page, or build it yourself:
+
+```bash
+pip install -e ".[dev]"
+python build_executable.py
+```
+
+The binary will be in `dist/infra-mapper` (Linux) or `dist\infra-mapper.exe` (Windows).
+
 ### First Run
 
 Simply run the tool and follow the interactive prompts:
@@ -146,18 +164,26 @@ Simply run the tool and follow the interactive prompts:
 infra-mapper
 ```
 
-You'll be asked to provide:
-1. **SSH private key path** (default: `~/.ssh/id_rsa`)
+On first run (no saved configuration), you'll be asked to:
+1. **(c)reate** a configuration interactively, or **(t)emplate** to generate an editable file
 2. **For each server:**
    - Hostname or IP address
-   - SSH username
+   - SSH username (default: root)
    - SSH port (default: 22)
+   - Authentication method: **key** (SSH key) or **password**
+   - SSH key path (if key auth) or password (if password auth, masked input)
 3. **Save configuration** for future runs (recommended)
+
+**Security**: Passwords are **never** saved to disk. Only the auth method and username are stored. You'll be prompted for passwords each time.
 
 ### Example Session
 
 ```
-Infrastructure Mapper
+Docker Infrastructure Mapper
+Discover and visualize Docker containers across servers
+
+No server configuration found.
+Would you like to (c)reate one interactively or generate a (t)emplate? [c/t] (c): c
 
 Server Configuration
 Enter details for each server (leave hostname empty to finish)
@@ -165,28 +191,26 @@ Enter details for each server (leave hostname empty to finish)
 Server 1 hostname/IP: 192.168.1.10
 SSH username [root]: admin
 SSH port [22]: 22
+Authentication method [key/password] (key): key
 SSH private key path [~/.ssh/id_rsa]: ~/.ssh/my_key
-✓ Added 192.168.1.10
+Added 192.168.1.10 (key auth)
 
 Server 2 hostname/IP: prod-server.example.com
 SSH username [root]: deploy
 SSH port [22]: 22
-SSH private key path [~/.ssh/id_rsa]: ~/.ssh/prod_key
-✓ Added prod-server.example.com
+Authentication method [key/password] (key): password
+Password for deploy@prod-server.example.com: ********
+Added prod-server.example.com (password auth)
 
 Server 3 hostname/IP:
 
 Save server configuration for future use? [Y/n]: Y
-Configuration saved
+Configuration saved to ~/.infra-mapper/servers.yaml
 
-╭─────────────────────────────────────────────────────────╮
-│              Configured Servers                         │
-├────────────────────────┬─────────┬──────┬──────────────┤
-│ Hostname               │ Username│ Port │ SSH Key      │
-├────────────────────────┼─────────┼──────┼──────────────┤
-│ 192.168.1.10          │ admin   │ 22   │ ~/.ssh/...   │
-│ prod-server.example.com│ deploy  │ 22   │ ~/.ssh/...   │
-╰────────────────────────┴─────────┴──────┴──────────────╯
+ Configured Servers
+ Hostname                 Username  Port  Auth      SSH Key
+ 192.168.1.10             admin     22    Key       ~/.ssh/my_key
+ prod-server.example.com  deploy    22    Password  -
 
 Discovering containers...
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 100% 2/2 servers
@@ -198,17 +222,20 @@ Discovery Summary
 
 Generating Mermaid diagram...
 
-✓ Diagram saved to infrastructure.md
+Diagram saved to infrastructure.md
 ```
 
 ### Subsequent Runs
 
 If you saved your configuration, the tool will offer to reuse it:
 
-```bash
-infra-mapper
+```
+Found saved configuration with 2 server(s) at ~/.infra-mapper/servers.yaml
+Use saved configuration? [Y/n]: Y
+Loaded saved configuration
 
-Found saved configuration. Use it? [Y/n]: Y
+1 server(s) use password authentication.
+Password for deploy@prod-server.example.com: ********
 ```
 
 ## 📊 Output
@@ -249,17 +276,20 @@ Server configurations are saved to `~/.infra-mapper/servers.yaml`:
 
 ```yaml
 servers:
+  # Key-based authentication
   - hostname: 192.168.1.10
     username: admin
+    auth_method: key
     ssh_key_path: /home/user/.ssh/id_rsa
     port: 22
+  # Password authentication (password is prompted at runtime, never stored)
   - hostname: prod-server.example.com
     username: deploy
-    ssh_key_path: /home/user/.ssh/prod_key
+    auth_method: password
     port: 22
 ```
 
-You can manually edit this file if needed, or delete it to start fresh.
+You can manually edit this file, delete it to start fresh, or run `infra-mapper --config /path/to/other.yaml` to use a custom location.
 
 ## 🔧 Troubleshooting
 

@@ -1,8 +1,9 @@
 """Main entry point for the Infrastructure Mapper CLI application."""
 
+import argparse
 import sys
 from pathlib import Path
-from typing import List
+from typing import Dict, List, Optional
 
 from rich.console import Console
 from rich.prompt import Prompt, Confirm
@@ -29,10 +30,14 @@ console = Console()
 class InfraMapper:
     """Main application orchestrator for Infrastructure Mapper."""
 
-    def __init__(self):
+    def __init__(self, config_path: Optional[str] = None):
         """Initialize the Infrastructure Mapper application."""
-        self.config_manager = ConfigManager()
+        if config_path:
+            self.config_manager = ConfigManager(config_file=Path(config_path))
+        else:
+            self.config_manager = ConfigManager()
         self.generator = MermaidGenerator()
+        self._passwords: Dict[str, str] = {}
 
     def run(self) -> None:
         """Main execution flow."""
@@ -40,7 +45,7 @@ class InfraMapper:
             # Display banner
             console.print(
                 Panel.fit(
-                    "[bold cyan]🐳 Docker Infrastructure Mapper[/bold cyan]\n"
+                    "[bold cyan]Docker Infrastructure Mapper[/bold cyan]\n"
                     "Discover and visualize Docker containers across servers",
                     border_style="cyan",
                 )
@@ -72,7 +77,7 @@ class InfraMapper:
             output_file = Path("infrastructure.md")
             saved_path = self.generator.save_to_file(diagram, str(output_file))
 
-            console.print(f"\n[green]✓ Diagram saved to {saved_path}[/green]")
+            console.print(f"\n[green]Diagram saved to {saved_path}[/green]")
             console.print("\n[bold]Diagram Preview:[/bold]")
             console.print(diagram)
 
@@ -81,34 +86,55 @@ class InfraMapper:
             )
 
         except KeyboardInterrupt:
-            console.print("\n[yellow]⚠ Operation cancelled by user[/yellow]")
+            console.print("\n[yellow]Operation cancelled by user[/yellow]")
             sys.exit(0)
         except InfraMapperError as e:
-            console.print(f"\n[red]✗ Error: {e}[/red]")
+            console.print(f"\n[red]Error: {e}[/red]")
             sys.exit(1)
         except Exception as e:
-            console.print(f"\n[red]✗ Unexpected error: {e}[/red]")
+            console.print(f"\n[red]Unexpected error: {e}[/red]")
             sys.exit(1)
 
     def _get_server_configurations(self) -> List[ServerCredentials]:
         """Get server configurations from user or config file."""
-        # Check for saved configuration
         if self.config_manager.config_exists():
-            use_saved = Confirm.ask(
-                "[cyan]Found saved configuration. Use it?[/cyan]", default=True
-            )
+            # Config exists -- show count and ask to reuse
+            try:
+                servers = self.config_manager.load_servers()
+                if servers:
+                    console.print(
+                        f"[cyan]Found saved configuration with "
+                        f"{len(servers)} server(s) at {self.config_manager.config_file}[/cyan]"
+                    )
+                    use_saved = Confirm.ask(
+                        "[cyan]Use saved configuration?[/cyan]", default=True
+                    )
 
-            if use_saved:
-                try:
-                    servers = self.config_manager.load_servers()
-                    if servers:
-                        console.print("[green]✓ Loaded saved configuration[/green]\n")
+                    if use_saved:
+                        console.print("[green]Loaded saved configuration[/green]\n")
+                        self._passwords.update(self._collect_passwords(servers))
                         return servers
-                except Exception as e:
-                    console.print(f"[yellow]⚠ Failed to load saved config: {e}[/yellow]")
-                    console.print("[yellow]Starting fresh configuration...[/yellow]\n")
+            except Exception as e:
+                console.print(f"[yellow]Failed to load saved config: {e}[/yellow]")
+                console.print("[yellow]Starting fresh configuration...[/yellow]\n")
+        else:
+            # First run -- no config exists
+            console.print("[cyan]No server configuration found.[/cyan]")
+            choice = Prompt.ask(
+                "[cyan]Would you like to [bold](c)[/bold]reate one interactively "
+                "or generate a [bold](t)[/bold]emplate?[/cyan]",
+                choices=["c", "t"],
+                default="c",
+            )
+            if choice == "t":
+                template_path = self.config_manager.generate_template()
+                console.print(
+                    f"\n[green]Template created at {template_path}[/green]\n"
+                    "[dim]Edit the file with your server details, then run infra-mapper again.[/dim]"
+                )
+                return []
 
-        # Prompt for new configuration
+        # Interactive prompting
         servers = self._prompt_servers()
 
         # Offer to save configuration
@@ -120,11 +146,33 @@ class InfraMapper:
             if save_config:
                 try:
                     self.config_manager.save_servers(servers)
-                    console.print("[green]✓ Configuration saved[/green]\n")
+                    console.print(
+                        f"[green]Configuration saved to {self.config_manager.config_file}[/green]\n"
+                    )
                 except Exception as e:
-                    console.print(f"[yellow]⚠ Failed to save config: {e}[/yellow]\n")
+                    console.print(f"[yellow]Failed to save config: {e}[/yellow]\n")
 
         return servers
+
+    def _collect_passwords(self, servers: List[ServerCredentials]) -> Dict[str, str]:
+        """Prompt for passwords for servers using password authentication."""
+        passwords: Dict[str, str] = {}
+        password_servers = [s for s in servers if s.auth_method == "password"]
+        if not password_servers:
+            return passwords
+
+        console.print(
+            f"[cyan]{len(password_servers)} server(s) use password authentication.[/cyan]"
+        )
+        for server in password_servers:
+            password = Prompt.ask(
+                f"[cyan]Password for {server.username}@{server.hostname}[/cyan]",
+                password=True,
+            )
+            passwords[f"{server.hostname}:{server.port}"] = password
+
+        console.print()
+        return passwords
 
     def _prompt_servers(self) -> List[ServerCredentials]:
         """Prompt user for server information."""
@@ -161,43 +209,74 @@ class InfraMapper:
                 console.print("[red]Invalid port number. Using default 22.[/red]")
                 port = 22
 
-            # Prompt for SSH key with validation loop
-            key_path = None
-            default_key = str(Path.home() / ".ssh" / "id_rsa")
+            # Prompt for authentication method
+            auth_method = Prompt.ask(
+                "[cyan]Authentication method[/cyan]",
+                choices=["key", "password"],
+                default="key",
+            )
 
-            while key_path is None:
-                key_path_str = Prompt.ask(
-                    "[cyan]SSH private key path[/cyan]", default=default_key
+            if auth_method == "key":
+                # SSH key path with validation loop
+                key_path = self._prompt_ssh_key_path()
+                if key_path is None:
+                    console.print("[yellow]Skipping this server[/yellow]\n")
+                    continue
+
+                try:
+                    server = ServerCredentials(
+                        hostname=hostname,
+                        username=username,
+                        auth_method="key",
+                        ssh_key_path=key_path,
+                        port=port,
+                    )
+                    servers.append(server)
+                    console.print(f"[green]Added {hostname} (key auth)[/green]\n")
+                except Exception as e:
+                    console.print(f"[red]Failed to add server: {e}[/red]\n")
+            else:
+                # Password auth -- prompt password now (won't be saved)
+                password = Prompt.ask(
+                    f"[cyan]Password for {username}@{hostname}[/cyan]",
+                    password=True,
                 )
-                temp_key_path = Path(key_path_str).expanduser()
+                self._passwords[f"{hostname}:{port}"] = password
 
-                # Validate key exists
-                if not temp_key_path.exists():
-                    console.print(f"[red]✗ SSH key not found: {temp_key_path}[/red]")
-                    retry = Confirm.ask("Try a different key?", default=True)
-                    if not retry:
-                        # User doesn't want to retry, skip this server
-                        console.print("[yellow]Skipping this server[/yellow]\n")
-                        break
-                    # Loop continues to re-ask for key path
-                else:
-                    key_path = temp_key_path
-
-            # If key_path is still None, user chose to skip this server
-            if key_path is None:
-                continue
-
-            # Create server credentials
-            try:
-                server = ServerCredentials(
-                    hostname=hostname, username=username, ssh_key_path=key_path, port=port
-                )
-                servers.append(server)
-                console.print(f"[green]✓ Added {hostname}[/green]\n")
-            except Exception as e:
-                console.print(f"[red]✗ Failed to add server: {e}[/red]\n")
+                try:
+                    server = ServerCredentials(
+                        hostname=hostname,
+                        username=username,
+                        auth_method="password",
+                        port=port,
+                    )
+                    servers.append(server)
+                    console.print(f"[green]Added {hostname} (password auth)[/green]\n")
+                except Exception as e:
+                    console.print(f"[red]Failed to add server: {e}[/red]\n")
 
         return servers
+
+    def _prompt_ssh_key_path(self) -> Optional[Path]:
+        """Prompt for SSH key path with validation loop."""
+        default_key = str(Path.home() / ".ssh" / "id_rsa")
+        key_path = None
+
+        while key_path is None:
+            key_path_str = Prompt.ask(
+                "[cyan]SSH private key path[/cyan]", default=default_key
+            )
+            temp_key_path = Path(key_path_str).expanduser()
+
+            if not temp_key_path.exists():
+                console.print(f"[red]SSH key not found: {temp_key_path}[/red]")
+                retry = Confirm.ask("Try a different key?", default=True)
+                if not retry:
+                    return None
+            else:
+                key_path = temp_key_path
+
+        return key_path
 
     def _display_servers_table(self, servers: List[ServerCredentials]) -> None:
         """Display configured servers in a formatted table."""
@@ -206,15 +285,23 @@ class InfraMapper:
         table.add_column("Hostname", style="cyan", no_wrap=True)
         table.add_column("Username", style="green")
         table.add_column("Port", style="yellow", justify="right")
-        table.add_column("SSH Key", style="magenta")
+        table.add_column("Auth", style="magenta")
+        table.add_column("SSH Key", style="dim")
 
         for server in servers:
-            # Truncate key path for display
-            key_display = str(server.ssh_key_path)
-            if len(key_display) > 40:
-                key_display = "..." + key_display[-37:]
+            auth_display = "Key" if server.auth_method == "key" else "Password"
 
-            table.add_row(server.hostname, server.username, str(server.port), key_display)
+            if server.auth_method == "key" and server.ssh_key_path:
+                key_display = str(server.ssh_key_path)
+                if len(key_display) > 40:
+                    key_display = "..." + key_display[-37:]
+            else:
+                key_display = "-"
+
+            table.add_row(
+                server.hostname, server.username, str(server.port),
+                auth_display, key_display
+            )
 
         console.print(table)
 
@@ -235,13 +322,26 @@ class InfraMapper:
         info = ServerInfo(credentials=server_creds)
 
         try:
-            # Create SSH connection
-            ssh = SSHConnectionManager(
-                hostname=server_creds.hostname,
-                username=server_creds.username,
-                key_path=server_creds.ssh_key_path,
-                port=server_creds.port,
-            )
+            # Build SSH connection kwargs based on auth method
+            ssh_kwargs = {
+                "hostname": server_creds.hostname,
+                "username": server_creds.username,
+                "port": server_creds.port,
+            }
+
+            if server_creds.auth_method == "password":
+                server_key = f"{server_creds.hostname}:{server_creds.port}"
+                password = self._passwords.get(server_key)
+                if not password:
+                    info.connection_status = "ssh_failed"
+                    info.error_message = "No password provided"
+                    console.print(f"  [red]{server_creds.hostname}: No password available[/red]")
+                    return info
+                ssh_kwargs["password"] = password
+            else:
+                ssh_kwargs["key_path"] = server_creds.ssh_key_path
+
+            ssh = SSHConnectionManager(**ssh_kwargs)
 
             # Connect and discover
             with ssh.connect():
@@ -255,17 +355,17 @@ class InfraMapper:
         except SSHConnectionError as e:
             info.connection_status = "ssh_failed"
             info.error_message = str(e)
-            console.print(f"  [red]✗ {server_creds.hostname}: SSH connection failed[/red]")
+            console.print(f"  [red]{server_creds.hostname}: SSH connection failed[/red]")
 
         except DockerNotFoundError as e:
             info.connection_status = "no_docker"
             info.error_message = str(e)
-            console.print(f"  [yellow]⚠ {server_creds.hostname}: Docker not found[/yellow]")
+            console.print(f"  [yellow]{server_creds.hostname}: Docker not found[/yellow]")
 
         except Exception as e:
             info.connection_status = "failed"
             info.error_message = str(e)
-            console.print(f"  [red]✗ {server_creds.hostname}: {e}[/red]")
+            console.print(f"  [red]{server_creds.hostname}: {e}[/red]")
 
         return info
 
@@ -297,7 +397,19 @@ class InfraMapper:
 
 def main():
     """CLI entry point."""
-    app = InfraMapper()
+    parser = argparse.ArgumentParser(
+        prog="infra-mapper",
+        description="Discover and visualize Docker containers across servers",
+    )
+    parser.add_argument(
+        "--config",
+        type=str,
+        default=None,
+        help="Path to custom servers.yaml config file",
+    )
+    args = parser.parse_args()
+
+    app = InfraMapper(config_path=args.config)
     app.run()
 
 

@@ -1,8 +1,8 @@
 """Server data models for SSH connection and infrastructure info."""
 
 from pathlib import Path
-from typing import List, Optional
-from pydantic import BaseModel, Field, field_validator
+from typing import List, Literal, Optional
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from .container import Container
 from .docker_stack import DockerStack
@@ -13,13 +13,27 @@ class ServerCredentials(BaseModel):
 
     hostname: str = Field(..., description="Server hostname or IP address")
     username: str = Field(..., description="SSH username")
-    ssh_key_path: Path = Field(..., description="Path to SSH private key")
+    auth_method: Literal["key", "password"] = Field(
+        default="key", description="Authentication method: 'key' or 'password'"
+    )
+    ssh_key_path: Optional[Path] = Field(
+        default=None, description="Path to SSH private key (required when auth_method='key')"
+    )
     port: int = Field(default=22, description="SSH port number")
 
-    @field_validator("ssh_key_path")
+    @model_validator(mode="after")
+    def validate_auth_config(self) -> "ServerCredentials":
+        """Ensure ssh_key_path is provided when auth_method is 'key'."""
+        if self.auth_method == "key" and self.ssh_key_path is None:
+            raise ValueError("ssh_key_path is required when auth_method is 'key'")
+        return self
+
+    @field_validator("ssh_key_path", mode="before")
     @classmethod
-    def validate_ssh_key_path(cls, v: Path) -> Path:
+    def validate_ssh_key_path(cls, v: Optional[Path]) -> Optional[Path]:
         """Convert string to Path if needed."""
+        if v is None:
+            return None
         if isinstance(v, str):
             return Path(v).expanduser()
         return v.expanduser()
@@ -34,13 +48,14 @@ class ServerCredentials(BaseModel):
 
     def __str__(self) -> str:
         """Format credentials as string for display."""
-        return f"{self.username}@{self.hostname}:{self.port}"
+        auth = "key" if self.auth_method == "key" else "password"
+        return f"{self.username}@{self.hostname}:{self.port} ({auth})"
 
     def __repr__(self) -> str:
         """Detailed representation for debugging."""
         return (
             f"ServerCredentials(hostname='{self.hostname}', username='{self.username}', "
-            f"port={self.port})"
+            f"auth_method='{self.auth_method}', port={self.port})"
         )
 
 

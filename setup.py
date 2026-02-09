@@ -16,6 +16,9 @@ setup(
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     install_requires=requirements,
+    extras_require={
+        "dev": ["pyinstaller>=6.0"],
+    },
     entry_points={
         "console_scripts": [
             "infra-mapper=infra_mapper.__main__:main",
