@@ -1,6 +1,28 @@
 # 🐳 Docker Infrastructure Mapper
 
-Automated tool to discover and visualize Docker containers running across multiple Ubuntu servers. Generates beautiful Mermaid diagrams for documentation.
+Automated tool to discover and visualize Docker containers running across multiple servers. Generates beautiful Mermaid diagrams for documentation.
+
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+## 🚀 Quick Start
+
+```bash
+# Clone the repository
+git clone https://forgejo.hassio.ro/vlad/infra-mapper.git
+cd infra-mapper
+
+# Set up and run
+python -m venv venv
+source venv/Scripts/activate  # On Windows Git Bash
+# or: venv\Scripts\activate    # On Windows CMD
+# or: source venv/bin/activate # On Linux/macOS
+
+pip install -e .
+infra-mapper
+```
+
+Follow the interactive prompts to configure your servers and generate your infrastructure diagram!
 
 ## ✨ Features
 
@@ -61,18 +83,23 @@ sudo apt install python3.12 python3.12-venv python3-pip
 
 ### Server Requirements
 
-- ✅ SSH access to target Ubuntu 24 servers
+- ✅ SSH access to target Linux servers (Ubuntu, Debian, CentOS, etc.)
 - ✅ SSH private key authentication configured
 - ✅ Docker installed on target servers
-- ✅ User account must have `sudo` privileges for Docker commands
+- ✅ User account with `sudo` privileges for Docker commands
+
+**Note**: While developed primarily for Ubuntu 24.04, the tool should work with any Linux distribution running Docker.
 
 ## 🚀 Installation
 
-### 1. Clone or Download
+### 1. Clone the Repository
 
 ```bash
-cd "d:\Storage Spaces\Infra Mapping"
+git clone https://forgejo.hassio.ro/vlad/infra-mapper.git
+cd infra-mapper
 ```
+
+Or download the latest release and extract it.
 
 ### 2. Create Virtual Environment
 
@@ -316,16 +343,40 @@ The architecture supports easy extension for:
 
 ## 📝 License
 
-MIT License
+MIT License - feel free to use, modify, and distribute!
 
 ## 🤝 Contributing
 
-Contributions welcome! This tool is designed to be extended and improved.
+Contributions are welcome! Here's how to contribute:
 
-## 🐛 Issues
+1. Fork the repository on [Forgejo](https://forgejo.hassio.ro/vlad/infra-mapper)
+2. Create a feature branch: `git checkout -b feature/amazing-feature`
+3. Make your changes and commit: `git commit -m "Add amazing feature"`
+4. Push to your fork: `git push origin feature/amazing-feature`
+5. Open a Pull Request
 
-Found a bug or have a feature request? Please open an issue on the project repository.
+**Ideas for contributions:**
+- Additional export formats (JSON, HTML, PlantUML)
+- Container health status indicators
+- Resource usage visualization
+- Kubernetes support
+- Network topology mapping
+- Web dashboard interface
+
+## 🐛 Issues & Support
+
+Found a bug or have a feature request?
+
+- **Report issues**: [Create an issue](https://forgejo.hassio.ro/vlad/infra-mapper/issues)
+- **Discussions**: Use the issue tracker for questions and ideas
+- **Documentation**: Improvements to docs are always welcome!
+
+## 🔗 Links
+
+- **Repository**: https://forgejo.hassio.ro/vlad/infra-mapper
+- **Issue Tracker**: https://forgejo.hassio.ro/vlad/infra-mapper/issues
+- **Mermaid Docs**: https://mermaid.js.org/
 
 ---
 
-Made with ❤️ for infrastructure teams
+Made with ❤️ for infrastructure teams by [vlad](https://forgejo.hassio.ro/vlad)
