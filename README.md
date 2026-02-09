@@ -40,6 +40,7 @@ Follow the interactive prompts to configure your servers and generate your infra
 - 📦 **Stack Detection**: Identify Docker Compose stacks vs standalone containers
 - 🗺️ **Port Mapping**: Extract and display all exposed ports
 - 📊 **Mermaid Diagrams**: Generate visual documentation that renders in GitHub, VS Code, and more
+- 🌐 **HTML Export**: Generate styled HTML tables for documentation platforms that don't support Mermaid
 - 💾 **Config Persistence**: Save server configurations for quick re-runs
 - 🎨 **Beautiful CLI**: Interactive prompts with progress bars
 
@@ -150,7 +151,9 @@ pip install -e .
 ### CLI Options
 
 ```bash
-infra-mapper                              # Use default config (~/.infra-mapper/servers.yaml)
+infra-mapper                                 # Interactive prompts (including output format)
+infra-mapper --format mermaid                # Mermaid diagram output (Markdown)
+infra-mapper --format html                   # HTML table output (inline CSS, paste-ready)
 infra-mapper --config /path/to/servers.yaml  # Use custom config file
 ```
 
@@ -257,9 +260,11 @@ Discovery Summary
 ● 192.168.1.10: 2 stacks, 1 standalone, 8 total containers
 ● prod-server.example.com: 3 stacks, 0 standalone, 12 total containers
 
+Output format [mermaid/html] (mermaid): mermaid
+
 Generating Mermaid diagram...
 
-Diagram saved to infrastructure.md
+Output saved to infrastructure.md
 ```
 
 ### Subsequent Runs
@@ -277,7 +282,9 @@ Password for deploy@prod-server.example.com: ********
 
 ## 📊 Output
 
-The tool generates a `infrastructure.md` file with a Mermaid diagram showing:
+### Mermaid (default)
+
+The tool generates an `infrastructure.md` file with a Mermaid diagram showing:
 
 - 🖥️ **Servers** (blue nodes)
 - 📦 **Docker Compose Stacks** (orange nodes)
@@ -300,10 +307,19 @@ graph TB
 
 The diagram renders beautifully in:
 - GitHub (natively)
-- VS Code (with Markdown Preview Enhanced extension)
+- VS Code (with Markdown Preview Mermaid Support extension)
 - GitLab
 - Obsidian
 - Any Markdown viewer with Mermaid support
+
+### HTML
+
+With `--format html` (or by choosing `html` at the interactive prompt), the tool generates an `infrastructure.html` file with styled HTML tables. This format is designed for documentation platforms that don't support Mermaid.
+
+- All CSS is inline (no external stylesheets) — works in any WYSIWYG editor
+- Tables are self-contained with explicit colors — readable on both light and dark themes
+- Port numbers are clickable links to access services directly
+- Copy the HTML source and paste it into your documentation platform's source editor
 
 ## ⚙️ Configuration
 
@@ -404,7 +420,7 @@ The architecture supports easy extension for:
 - Volume mount discovery
 - Network topology visualization
 - Real-time monitoring mode
-- JSON/HTML/PlantUML export formats
+- JSON/PlantUML export formats
 - Kubernetes support
 - Web dashboard
 
@@ -423,7 +439,7 @@ Contributions are welcome! Here's how to contribute:
 5. Open a Pull Request
 
 **Ideas for contributions:**
-- Additional export formats (JSON, HTML, PlantUML)
+- Additional export formats (JSON, PlantUML)
 - Container health status indicators
 - Resource usage visualization
 - Kubernetes support

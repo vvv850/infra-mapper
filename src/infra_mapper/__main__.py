@@ -15,6 +15,7 @@ from .core.config_manager import ConfigManager
 from .core.ssh_manager import SSHConnectionManager
 from .core.docker_discovery import DockerDiscoveryService
 from .generators.mermaid_generator import MermaidGenerator
+from .generators.html_generator import HtmlGenerator
 from .models.server import ServerCredentials, ServerInfo
 from .utils.exceptions import InfraMapperError, SSHConnectionError, DockerNotFoundError
 
@@ -30,13 +31,13 @@ console = Console()
 class InfraMapper:
     """Main application orchestrator for Infrastructure Mapper."""
 
-    def __init__(self, config_path: Optional[str] = None):
+    def __init__(self, config_path: Optional[str] = None, output_format: Optional[str] = None):
         """Initialize the Infrastructure Mapper application."""
         if config_path:
             self.config_manager = ConfigManager(config_file=Path(config_path))
         else:
             self.config_manager = ConfigManager()
-        self.generator = MermaidGenerator()
+        self.output_format = output_format
         self._passwords: Dict[str, str] = {}
 
     def run(self) -> None:
@@ -69,21 +70,36 @@ class InfraMapper:
             # Display summary
             self._display_summary(server_info_list)
 
-            # Generate Mermaid diagram
-            console.print("\n[bold]Generating Mermaid diagram...[/bold]")
-            diagram = self.generator.generate(server_info_list)
+            # Choose output format
+            fmt = self.output_format
+            if fmt is None:
+                fmt = Prompt.ask(
+                    "\n[cyan]Output format[/cyan]",
+                    choices=["mermaid", "html"],
+                    default="mermaid",
+                )
+
+            if fmt == "html":
+                generator = HtmlGenerator()
+                console.print("\n[bold]Generating HTML output...[/bold]")
+                output_file = "infrastructure.html"
+                hint = f"Open {output_file} in a browser or paste into your documentation platform's source editor"
+            else:
+                generator = MermaidGenerator()
+                console.print("\n[bold]Generating Mermaid diagram...[/bold]")
+                output_file = "infrastructure.md"
+                hint = f"Open {output_file} in a Markdown viewer to see the rendered diagram"
+
+            content = generator.generate(server_info_list)
 
             # Save to file
-            output_file = Path("infrastructure.md")
-            saved_path = self.generator.save_to_file(diagram, str(output_file))
+            saved_path = generator.save_to_file(content, output_file)
 
-            console.print(f"\n[green]Diagram saved to {saved_path}[/green]")
-            console.print("\n[bold]Diagram Preview:[/bold]")
-            console.print(diagram)
+            console.print(f"\n[green]Output saved to {saved_path}[/green]")
+            console.print("\n[bold]Preview:[/bold]")
+            console.print(content)
 
-            console.print(
-                f"\n[dim]Open {saved_path} in a Markdown viewer to see the rendered diagram[/dim]"
-            )
+            console.print(f"\n[dim]{hint}[/dim]")
 
         except KeyboardInterrupt:
             console.print("\n[yellow]Operation cancelled by user[/yellow]")
@@ -407,9 +423,16 @@ def main():
         default=None,
         help="Path to custom servers.yaml config file",
     )
+    parser.add_argument(
+        "--format",
+        type=str,
+        choices=["mermaid", "html"],
+        default=None,
+        help="Output format: mermaid or html (prompts if not specified)",
+    )
     args = parser.parse_args()
 
-    app = InfraMapper(config_path=args.config)
+    app = InfraMapper(config_path=args.config, output_format=args.format)
     app.run()
 
     # Keep console window open when launched by double-clicking the exe

@@ -55,6 +55,8 @@ htmlcov/
 # Output files
 infrastructure.md
 infrastructure_*.md
+infrastructure.html
+infrastructure_*.html
 
 # PyInstaller
 *.spec
