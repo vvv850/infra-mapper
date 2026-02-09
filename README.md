@@ -9,7 +9,7 @@ Automated tool to discover and visualize Docker containers running across multip
 
 ```bash
 # Clone the repository
-git clone https://forgejo.hassio.ro/vlad/infra-mapper.git
+git clone https://github.com/vvv850/infra-mapper.git
 cd infra-mapper
 
 # Set up and run
@@ -23,7 +23,7 @@ pip install -e .
 infra-mapper
 ```
 
-Or download a standalone binary from the [Releases](https://forgejo.hassio.ro/vlad/infra-mapper/releases) page — no Python required!
+Or download a standalone binary from the [Releases](https://github.com/vvv850/infra-mapper/releases) page — no Python required!
 
 Follow the interactive prompts to configure your servers and generate your infrastructure diagram!
 
@@ -98,7 +98,7 @@ sudo apt install python3.12 python3.12-venv python3-pip
 ### 1. Clone the Repository
 
 ```bash
-git clone https://forgejo.hassio.ro/vlad/infra-mapper.git
+git clone https://github.com/vvv850/infra-mapper.git
 cd infra-mapper
 ```
 
@@ -150,7 +150,7 @@ infra-mapper --config /path/to/servers.yaml  # Use custom config file
 
 ### Standalone Executable (no Python required)
 
-Download the pre-built binary for your platform from the [Releases](https://forgejo.hassio.ro/vlad/infra-mapper/releases) page:
+Download the pre-built binary for your platform from the [Releases](https://github.com/vvv850/infra-mapper/releases) page:
 
 | Platform | Binary |
 |----------|--------|
@@ -165,7 +165,7 @@ You can build your own standalone executable. **Note:** PyInstaller cannot cross
 
 **Windows:**
 ```powershell
-git clone https://forgejo.hassio.ro/vlad/infra-mapper.git
+git clone https://github.com/vvv850/infra-mapper.git
 cd infra-mapper
 python -m venv venv
 venv\Scripts\Activate.ps1
@@ -177,7 +177,7 @@ python build_executable.py
 
 **Linux:**
 ```bash
-git clone https://forgejo.hassio.ro/vlad/infra-mapper.git
+git clone https://github.com/vvv850/infra-mapper.git
 cd infra-mapper
 python3 -m venv venv
 source venv/bin/activate
@@ -410,7 +410,7 @@ MIT License - feel free to use, modify, and distribute!
 
 Contributions are welcome! Here's how to contribute:
 
-1. Fork the repository on [Forgejo](https://forgejo.hassio.ro/vlad/infra-mapper)
+1. Fork the repository on [GitHub](https://github.com/vvv850/infra-mapper)
 2. Create a feature branch: `git checkout -b feature/amazing-feature`
 3. Make your changes and commit: `git commit -m "Add amazing feature"`
 4. Push to your fork: `git push origin feature/amazing-feature`
@@ -428,16 +428,16 @@ Contributions are welcome! Here's how to contribute:
 
 Found a bug or have a feature request?
 
-- **Report issues**: [Create an issue](https://forgejo.hassio.ro/vlad/infra-mapper/issues)
+- **Report issues**: [Create an issue](https://github.com/vvv850/infra-mapper/issues)
 - **Discussions**: Use the issue tracker for questions and ideas
 - **Documentation**: Improvements to docs are always welcome!
 
 ## 🔗 Links
 
-- **Repository**: https://forgejo.hassio.ro/vlad/infra-mapper
-- **Issue Tracker**: https://forgejo.hassio.ro/vlad/infra-mapper/issues
+- **Repository**: https://github.com/vvv850/infra-mapper
+- **Issue Tracker**: https://github.com/vvv850/infra-mapper/issues
 - **Mermaid Docs**: https://mermaid.js.org/
 
 ---
 
-Made with ❤️ for infrastructure teams by [vlad](https://forgejo.hassio.ro/vlad)
+Made with ❤️ for infrastructure teams by [vlad](https://github.com/vvv850)
