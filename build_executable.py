@@ -3,12 +3,14 @@
 import subprocess
 import sys
 import platform
+from pathlib import Path
 
 
 def build():
     """Build infra-mapper as a standalone single-file executable."""
     name = "infra-mapper"
     entry_point = "entry_point.py"
+    icon_path = Path(__file__).parent / "assets" / "icon.ico"
 
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -29,8 +31,13 @@ def build():
         "--hidden-import", "rich.progress",
         # Collect all rich submodules (includes dynamically-loaded unicode data)
         "--collect-submodules", "rich",
-        entry_point,
     ]
+
+    # Add icon on Windows
+    if platform.system() == "Windows" and icon_path.exists():
+        cmd.extend(["--icon", str(icon_path)])
+
+    cmd.append(entry_point)
 
     print(f"Building {name} for {platform.system()}...")
     subprocess.run(cmd, check=True)
