@@ -5,6 +5,12 @@ Automated tool to discover and visualize Docker containers running across multip
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+## 💡 Why?
+
+When your reverse proxy goes down or your DNS stops resolving, you need to know exactly where each container lives and how to reach it directly. I built this tool to give me a clear map of every Docker container across my servers — which host it's on, and which port is exposed — so I can access any service by IP and port without relying on DNS.
+
+The generated Mermaid diagrams include clickable links on port numbers, so you can jump straight to a running service right from your documentation.
+
 ## 🚀 Quick Start
 
 ```bash
