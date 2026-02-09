@@ -18,9 +18,12 @@ source venv/Scripts/activate  # On Windows Git Bash
 # or: venv\Scripts\activate    # On Windows CMD
 # or: source venv/bin/activate # On Linux/macOS
 
+pip install --upgrade pip
 pip install -e .
 infra-mapper
 ```
+
+Or download a standalone binary from the [Releases](https://forgejo.hassio.ro/vlad/infra-mapper/releases) page — no Python required!
 
 Follow the interactive prompts to configure your servers and generate your infrastructure diagram!
 
@@ -147,14 +150,42 @@ infra-mapper --config /path/to/servers.yaml  # Use custom config file
 
 ### Standalone Executable (no Python required)
 
-Download the pre-built binary for your platform from the [Releases](https://forgejo.hassio.ro/vlad/infra-mapper/releases) page, or build it yourself:
+Download the pre-built binary for your platform from the [Releases](https://forgejo.hassio.ro/vlad/infra-mapper/releases) page:
 
-```bash
+| Platform | Binary |
+|----------|--------|
+| Windows (x64) | `infra-mapper.exe` |
+| Linux (x64) | `infra-mapper` |
+
+Just download, and run — no Python installation needed.
+
+### Building from Source
+
+You can build your own standalone executable. **Note:** PyInstaller cannot cross-compile, so you must build on the target platform (build on Windows for `.exe`, build on Linux for Linux binary).
+
+**Windows:**
+```powershell
+git clone https://forgejo.hassio.ro/vlad/infra-mapper.git
+cd infra-mapper
+python -m venv venv
+venv\Scripts\Activate.ps1
+pip install --upgrade pip
 pip install -e ".[dev]"
 python build_executable.py
+# Output: dist\infra-mapper.exe
 ```
 
-The binary will be in `dist/infra-mapper` (Linux) or `dist\infra-mapper.exe` (Windows).
+**Linux:**
+```bash
+git clone https://forgejo.hassio.ro/vlad/infra-mapper.git
+cd infra-mapper
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+pip install -e ".[dev]"
+python build_executable.py
+# Output: dist/infra-mapper
+```
 
 ### First Run
 
