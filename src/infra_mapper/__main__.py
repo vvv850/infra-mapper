@@ -412,6 +412,11 @@ def main():
     app = InfraMapper(config_path=args.config)
     app.run()
 
+    # Keep console window open when launched by double-clicking the exe
+    if getattr(sys, 'frozen', False):
+        console.print()
+        input("Press Enter to exit...")
+
 
 if __name__ == "__main__":
     main()

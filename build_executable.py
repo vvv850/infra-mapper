@@ -8,7 +8,7 @@ import platform
 def build():
     """Build infra-mapper as a standalone single-file executable."""
     name = "infra-mapper"
-    entry_point = "src/infra_mapper/__main__.py"
+    entry_point = "entry_point.py"
 
     cmd = [
         sys.executable, "-m", "PyInstaller",
@@ -27,6 +27,8 @@ def build():
         "--hidden-import", "rich.table",
         "--hidden-import", "rich.panel",
         "--hidden-import", "rich.progress",
+        # Collect all rich submodules (includes dynamically-loaded unicode data)
+        "--collect-submodules", "rich",
         entry_point,
     ]
 
