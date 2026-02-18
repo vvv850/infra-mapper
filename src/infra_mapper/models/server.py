@@ -13,8 +13,8 @@ class ServerCredentials(BaseModel):
 
     hostname: str = Field(..., description="Server hostname or IP address")
     username: str = Field(..., description="SSH username")
-    auth_method: Literal["key", "password"] = Field(
-        default="key", description="Authentication method: 'key' or 'password'"
+    auth_method: Literal["key", "pass", "agent"] = Field(
+        default="key", description="Authentication method: 'key', 'pass', or 'agent'"
     )
     ssh_key_path: Optional[Path] = Field(
         default=None, description="Path to SSH private key (required when auth_method='key')"
@@ -48,7 +48,7 @@ class ServerCredentials(BaseModel):
 
     def __str__(self) -> str:
         """Format credentials as string for display."""
-        auth = "key" if self.auth_method == "key" else "password"
+        auth = self.auth_method
         return f"{self.username}@{self.hostname}:{self.port} ({auth})"
 
     def __repr__(self) -> str:

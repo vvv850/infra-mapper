@@ -75,30 +75,31 @@ class InfraMapper:
             if fmt is None:
                 fmt = Prompt.ask(
                     "\n[cyan]Output format[/cyan]",
-                    choices=["mermaid", "html"],
-                    default="mermaid",
+                    choices=["mermaid", "html", "both"],
+                    default="both",
                 )
 
-            if fmt == "html":
-                generator = HtmlGenerator()
-                console.print("\n[bold]Generating HTML output...[/bold]")
-                output_file = "infrastructure.html"
-                hint = f"Open {output_file} in a browser or paste into your documentation platform's source editor"
-            else:
-                generator = MermaidGenerator()
-                console.print("\n[bold]Generating Mermaid diagram...[/bold]")
-                output_file = "infrastructure.md"
-                hint = f"Open {output_file} in a Markdown viewer to see the rendered diagram"
+            formats = ["mermaid", "html"] if fmt == "both" else [fmt]
 
-            content = generator.generate(server_info_list)
+            for current_fmt in formats:
+                if current_fmt == "html":
+                    generator = HtmlGenerator()
+                    console.print("\n[bold]Generating HTML output...[/bold]")
+                    output_file = "infrastructure.html"
+                    hint = f"Open {output_file} in a browser or paste into your documentation platform's source editor"
+                else:
+                    generator = MermaidGenerator()
+                    console.print("\n[bold]Generating Mermaid diagram...[/bold]")
+                    output_file = "infrastructure.md"
+                    hint = f"Open {output_file} in a Markdown viewer to see the rendered diagram"
 
-            # Save to file
-            saved_path = generator.save_to_file(content, output_file)
+                content = generator.generate(server_info_list)
+                saved_path = generator.save_to_file(content, output_file)
+                console.print(f"[green]Output saved to {saved_path}[/green]")
 
-            console.print(f"\n[green]Output saved to {saved_path}[/green]")
+            # Preview the last generated format
             console.print("\n[bold]Preview:[/bold]")
             console.print(content)
-
             console.print(f"\n[dim]{hint}[/dim]")
 
         except KeyboardInterrupt:
@@ -173,7 +174,7 @@ class InfraMapper:
     def _collect_passwords(self, servers: List[ServerCredentials]) -> Dict[str, str]:
         """Prompt for passwords for servers using password authentication."""
         passwords: Dict[str, str] = {}
-        password_servers = [s for s in servers if s.auth_method == "password"]
+        password_servers = [s for s in servers if s.auth_method == "pass"]
         if not password_servers:
             return passwords
 
@@ -228,7 +229,7 @@ class InfraMapper:
             # Prompt for authentication method
             auth_method = Prompt.ask(
                 "[cyan]Authentication method[/cyan]",
-                choices=["key", "password"],
+                choices=["key", "pass", "agent"],
                 default="key",
             )
 
@@ -251,7 +252,7 @@ class InfraMapper:
                     console.print(f"[green]Added {hostname} (key auth)[/green]\n")
                 except Exception as e:
                     console.print(f"[red]Failed to add server: {e}[/red]\n")
-            else:
+            elif auth_method == "pass":
                 # Password auth -- prompt password now (won't be saved)
                 password = Prompt.ask(
                     f"[cyan]Password for {username}@{hostname}[/cyan]",
@@ -263,11 +264,24 @@ class InfraMapper:
                     server = ServerCredentials(
                         hostname=hostname,
                         username=username,
-                        auth_method="password",
+                        auth_method="pass",
                         port=port,
                     )
                     servers.append(server)
                     console.print(f"[green]Added {hostname} (password auth)[/green]\n")
+                except Exception as e:
+                    console.print(f"[red]Failed to add server: {e}[/red]\n")
+            else:
+                # Agent auth -- uses system SSH agent (1Password, ssh-agent, Pageant)
+                try:
+                    server = ServerCredentials(
+                        hostname=hostname,
+                        username=username,
+                        auth_method="agent",
+                        port=port,
+                    )
+                    servers.append(server)
+                    console.print(f"[green]Added {hostname} (agent auth)[/green]\n")
                 except Exception as e:
                     console.print(f"[red]Failed to add server: {e}[/red]\n")
 
@@ -305,7 +319,9 @@ class InfraMapper:
         table.add_column("SSH Key", style="dim")
 
         for server in servers:
-            auth_display = "Key" if server.auth_method == "key" else "Password"
+            auth_display = {"key": "Key", "pass": "Password", "agent": "Agent"}.get(
+                server.auth_method, server.auth_method
+            )
 
             if server.auth_method == "key" and server.ssh_key_path:
                 key_display = str(server.ssh_key_path)
@@ -345,7 +361,7 @@ class InfraMapper:
                 "port": server_creds.port,
             }
 
-            if server_creds.auth_method == "password":
+            if server_creds.auth_method == "pass":
                 server_key = f"{server_creds.hostname}:{server_creds.port}"
                 password = self._passwords.get(server_key)
                 if not password:
@@ -354,6 +370,8 @@ class InfraMapper:
                     console.print(f"  [red]{server_creds.hostname}: No password available[/red]")
                     return info
                 ssh_kwargs["password"] = password
+            elif server_creds.auth_method == "agent":
+                ssh_kwargs["use_agent"] = True
             else:
                 ssh_kwargs["key_path"] = server_creds.ssh_key_path
 
@@ -426,9 +444,9 @@ def main():
     parser.add_argument(
         "--format",
         type=str,
-        choices=["mermaid", "html"],
+        choices=["mermaid", "html", "both"],
         default=None,
-        help="Output format: mermaid or html (prompts if not specified)",
+        help="Output format: mermaid, html, or both (prompts if not specified)",
     )
     args = parser.parse_args()
 

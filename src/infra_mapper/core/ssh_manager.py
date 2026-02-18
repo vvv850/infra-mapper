@@ -18,6 +18,7 @@ class SSHConnectionManager:
         key_path: Optional[Path] = None,
         port: int = 22,
         password: Optional[str] = None,
+        use_agent: bool = False,
     ):
         """
         Initialize SSH connection manager.
@@ -28,12 +29,14 @@ class SSHConnectionManager:
             key_path: Path to SSH private key (for key-based auth)
             port: SSH port (default: 22)
             password: SSH password (for password-based auth)
+            use_agent: Use system SSH agent (1Password, ssh-agent, Pageant)
         """
         self.hostname = hostname
         self.username = username
         self.key_path = Path(key_path).expanduser() if key_path else None
         self.port = port
         self.password = password
+        self.use_agent = use_agent
         self._client: Optional[paramiko.SSHClient] = None
 
     @contextmanager
@@ -81,9 +84,19 @@ class SSHConnectionManager:
                     timeout=10,
                     banner_timeout=10,
                 )
+            elif self.use_agent:
+                self._client.connect(
+                    hostname=self.hostname,
+                    port=self.port,
+                    username=self.username,
+                    allow_agent=True,
+                    look_for_keys=False,
+                    timeout=10,
+                    banner_timeout=10,
+                )
             else:
                 raise SSHConnectionError(
-                    "No authentication method provided. Supply either key_path or password."
+                    "No authentication method provided. Supply key_path, password, or use_agent."
                 )
 
             yield self
@@ -159,7 +172,7 @@ class SSHConnectionManager:
 
     def __str__(self) -> str:
         """Format SSH manager as string for display."""
-        auth = "password" if self.password else "key"
+        auth = "password" if self.password else ("agent" if self.use_agent else "key")
         return f"SSH({self.username}@{self.hostname}:{self.port}, {auth})"
 
     def __repr__(self) -> str:

@@ -8,7 +8,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 setup(
     name="infra-mapper",
-    version="1.1.0",
+    version="1.1.1",
     author="vvv850",
     url="https://github.com/vvv850/infra-mapper",
     description="Automated Docker infrastructure discovery and visualization tool",

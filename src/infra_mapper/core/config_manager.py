@@ -88,7 +88,9 @@ class ConfigManager:
 
             servers = []
             for server in data["servers"]:
-                auth_method = server.get("auth_method", "key")  # backward compat
+                auth_method = server.get("auth_method", "key")
+                if auth_method == "password":  # backward compat
+                    auth_method = "pass"
                 kwargs = {
                     "hostname": server["hostname"],
                     "username": server["username"],
@@ -129,7 +131,13 @@ class ConfigManager:
                 {
                     "hostname": "server2.example.com",
                     "username": "admin",
-                    "auth_method": "password",
+                    "auth_method": "pass",
+                    "port": 22,
+                },
+                {
+                    "hostname": "server3.example.com",
+                    "username": "deploy",
+                    "auth_method": "agent",
                     "port": 22,
                 },
             ]
@@ -139,8 +147,9 @@ class ConfigManager:
             yaml.dump(template, f, default_flow_style=False, sort_keys=False)
             f.write(
                 "\n# Authentication methods:\n"
-                "#   auth_method: key      - Uses SSH private key (provide ssh_key_path)\n"
-                "#   auth_method: password  - Prompts for password at runtime (password is NOT stored)\n"
+                "#   auth_method: key   - SSH private key (provide ssh_key_path)\n"
+                "#   auth_method: pass  - Prompts for password at runtime (never stored)\n"
+                "#   auth_method: agent - System SSH agent (1Password, ssh-agent, Pageant)\n"
             )
 
         return self.config_file
